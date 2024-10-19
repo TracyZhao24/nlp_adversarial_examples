@@ -1,5 +1,7 @@
 import tensorflow as tf
 import numpy as np
+
+tf.compat.v1.disable_eager_execution()
 ## Model
 class SentimentModel(object):
     def __init__(self, batch_size = 64, vocab_size=10000, max_len=200, lstm_size=64,
@@ -16,47 +18,47 @@ class SentimentModel(object):
     
     def build_model(self):
         # shape = (batch_size, sentence_length, word_id)
-        self.x_holder = tf.placeholder(tf.int32, shape=[None, self.max_len])
-        self.y_holder = tf.placeholder(tf.int64, shape=[None])
-        self.seq_len = tf.cast(tf.reduce_sum(tf.sign(self.x_holder), axis=1), tf.int32)
+        self.x_holder = tf.compat.v1.placeholder(tf.int32, shape=[None, self.max_len])
+        self.y_holder = tf.compat.v1.placeholder(tf.int64, shape=[None])
+        self.seq_len = tf.cast(tf.reduce_sum(input_tensor=tf.sign(self.x_holder), axis=1), tf.int32)
         with tf.device("/cpu:0"):
             # embeddings matrix
-            self.embedding_w = tf.get_variable('embed_w', shape=[self.vocab_size,self.embeddings_dim],
-                                           initializer=tf.random_uniform_initializer(), trainable=True)
+            self.embedding_w = tf.compat.v1.get_variable('embed_w', shape=[self.vocab_size,self.embeddings_dim],
+                                           initializer=tf.compat.v1.random_uniform_initializer(), trainable=True)
             # embedded words
-            self.e = tf.nn.embedding_lookup(self.embedding_w, self.x_holder)
-        lstm = tf.contrib.rnn.BasicLSTMCell(self.lstm_size)
+            self.e = tf.nn.embedding_lookup(params=self.embedding_w, ids=self.x_holder)
+        lstm = tf.compat.v1.nn.rnn_cell.BasicLSTMCell(self.lstm_size)
         if self.is_train:
             # lstm = tf.nn.rnn_cell.DropoutWrapper(lstm, keep_probs=0.5)
-            self.e = tf.nn.dropout(self.e, self.keep_probs)
+            self.e = tf.nn.dropout(self.e, 1 - (self.keep_probs))
         self.init_state = lstm.zero_state(batch_size=self.batch_size, dtype=tf.float32)
-        rnn_outputs, final_state = tf.nn.dynamic_rnn(cell=lstm,
+        rnn_outputs, final_state = tf.compat.v1.nn.dynamic_rnn(cell=lstm,
                                                     inputs=self.e,
                                                     initial_state=self.init_state,
                                                     sequence_length=self.seq_len)
-        batch_size = tf.shape(rnn_outputs)[0]
-        max_length = tf.shape(rnn_outputs)[1]
+        batch_size = tf.shape(input=rnn_outputs)[0]
+        max_length = tf.shape(input=rnn_outputs)[1]
         out_size = int(rnn_outputs.get_shape()[2])
         index = tf.range(0, batch_size) * max_length + (self.seq_len - 1)
         flat = tf.reshape(rnn_outputs, [-1, out_size])
         relevant = tf.gather(flat, index)
         #last_output = rnn_outputs[:,-1,:]
-        relevant = tf.reduce_mean(rnn_outputs, axis=1)
+        relevant = tf.reduce_mean(input_tensor=rnn_outputs, axis=1)
         #last_output = tf.nn.dropout(last_output, 0.25)
         last_output = relevant
         if self.is_train:
-            last_output = tf.nn.dropout(last_output, self.keep_probs)
-        self.w = tf.get_variable("w", shape=[self.lstm_size, 2], initializer=tf.truncated_normal_initializer(stddev=0.2))
-        self.b = tf.get_variable("b", shape=[2], dtype=tf.float32)
+            last_output = tf.nn.dropout(last_output, 1 - (self.keep_probs))
+        self.w = tf.compat.v1.get_variable("w", shape=[self.lstm_size, 2], initializer=tf.compat.v1.truncated_normal_initializer(stddev=0.2))
+        self.b = tf.compat.v1.get_variable("b", shape=[2], dtype=tf.float32)
         logits = tf.matmul(last_output, self.w) + self.b
         self.y = tf.nn.softmax(logits)
-        self.cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
-            labels=tf.one_hot(self.y_holder, depth=2),logits=logits))
-        self.accuracy = tf.reduce_mean(tf.cast(tf.equal(self.y_holder, tf.argmax(self.y, 1)), tf.float32))
+        self.cost = tf.reduce_mean(input_tensor=tf.nn.softmax_cross_entropy_with_logits(
+            labels=tf.stop_gradient(tf.one_hot(self.y_holder, depth=2)),logits=logits))
+        self.accuracy = tf.reduce_mean(input_tensor=tf.cast(tf.equal(self.y_holder, tf.argmax(input=self.y, axis=1)), tf.float32))
         
         if self.is_train:
             #print(self.cost)
-            self.optimizer = tf.train.GradientDescentOptimizer(learning_rate=1.0)
+            self.optimizer = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=1.0)
             self.train_op = self.optimizer.minimize(self.cost)
         
     def train_for_epoch(self, sess, train_x, train_y):

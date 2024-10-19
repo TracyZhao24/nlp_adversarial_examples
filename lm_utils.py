@@ -18,12 +18,12 @@ def LoadModel(sess, graph, gd_file, ckpt_file):
   """
   with graph.as_default():
     sys.stderr.write('Recovering graph.\n')
-    with tf.gfile.FastGFile(gd_file, 'r') as f:
+    with tf.compat.v1.gfile.FastGFile(gd_file, 'r') as f:
       s = f.read()
-      gd = tf.GraphDef()
+      gd = tf.compat.v1.GraphDef()
       text_format.Merge(s, gd)
 
-    tf.logging.info('Recovering Graph %s', gd_file)
+    tf.compat.v1.logging.info('Recovering Graph %s', gd_file)
     t = {}
     [t['states_init'], t['lstm/lstm_0/control_dependency'],
      t['lstm/lstm_1/control_dependency'], t['softmax_out'], t['class_ids_out'],

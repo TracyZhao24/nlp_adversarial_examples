@@ -27,7 +27,7 @@ class LM(object):
         print('LM vocab loading done')
         with tf.device("/gpu:1"):
             self.graph = tf.Graph()
-            self.sess = tf.Session(graph=self.graph)
+            self.sess = tf.compat.v1.Session(graph=self.graph)
         with self.graph.as_default():
             self.t = lm_utils.LoadModel(self.sess, self.graph, self.PBTXT_PATH, self.CKPT_PATH)
 
