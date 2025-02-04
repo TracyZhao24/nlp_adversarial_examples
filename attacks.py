@@ -76,14 +76,18 @@ class EntailmentAttack(object):
             pop_select_probs = logits / np.sum(logits)
 
             elite = [pop[top_attack]]
+            # pick self.pop_size-1 parents for the next generation
             parent1_idx = np.random.choice(
                 self.pop_size, size=self.pop_size-1, p=pop_select_probs)
             parent2_idx = np.random.choice(
                 self.pop_size, size=self.pop_size-1, p=pop_select_probs)
 
+            # generate next generation from the parents
             childs = [self.crossover(pop[parent1_idx[i]],
                                      pop[parent2_idx[i]])
                       for i in range(self.pop_size-1)]
+            
+            # run perturb subroutine on children to get the next generation 
             childs = [self.perturb(
                 x, x2_orig, neighbours_list, w_select_probs, target) for x in childs]
             pop = elite + childs
@@ -212,7 +216,9 @@ class GeneticAtack(object):
     def attack(self, x_orig, target, max_change=0.4):
         x_adv = x_orig.copy()
         x_len = np.sum(np.sign(x_orig))
-        # Neigbhours for every word.
+
+        # 1. Neigbhours for every word.
+        # top 50 closest neighbors, delta threshold = 0.5
         tmp = [glove_utils.pick_most_similar_words(
             x_orig[i], self.dist_mat, 50, 0.5) for i in range(x_len)]
         neigbhours_list = [x[0] for x in tmp]
@@ -227,31 +233,46 @@ class GeneticAtack(object):
             x_orig[i], self.dist_mat, self.top_n, 0.5) for i in range(x_len)]
         neigbhours_list = [x[0] for x in tmp]
         neighbours_dist = [x[1] for x in tmp]
+
+        # create initial generation
         pop = self.generate_population(
             x_orig, neigbhours_list, neighbours_dist, w_select_probs, target, self.pop_size)
+        
+        # max iters == max number of generations/iterations to try for
         for i in range(self.max_iters):
             # print(i)
+            # compute fitness of each member
+            # fitness = the target label prediction probability
             pop_preds = self.batch_model.predict(self.sess, np.array(pop))
             pop_scores = pop_preds[:, target]
             print('\t\t', i, ' -- ', np.max(pop_scores))
             pop_ranks = np.argsort(pop_scores)[::-1]
+            # most viable candidate in this generation
             top_attack = pop_ranks[0]
 
             logits = np.exp(pop_scores / self.temp)
             select_probs = logits / np.sum(logits)
 
+            # attack succeeded!
             if np.argmax(pop_preds[top_attack, :]) == target:
                 return pop[top_attack]
+            
             elite = [pop[top_attack]]  # elite
             # print(select_probs.shape)
+
+            # randomly sample pairs to be parents for the next generation
+            # probability is proportional to fitness values
             parent1_idx = np.random.choice(
                 self.pop_size, size=self.pop_size-1, p=select_probs)
             parent2_idx = np.random.choice(
                 self.pop_size, size=self.pop_size-1, p=select_probs)
-
+            
+            # synthesize children through crossover/reproduction
             childs = [self.crossover(pop[parent1_idx[i]],
                                      pop[parent2_idx[i]])
                       for i in range(self.pop_size-1)]
+            
+            # run perturb subroutine on children to get the next generation 
             childs = [self.perturb(
                 x, x_orig, neigbhours_list, neighbours_dist, w_select_probs, target) for x in childs]
             pop = elite + childs

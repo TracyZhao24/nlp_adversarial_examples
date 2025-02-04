@@ -2,15 +2,18 @@
 # Modified by Moustafa Alzantot (malzantot@ucla.edu)
 
 from __future__ import print_function
-from keras.utils import np_utils
+import numpy as np
+from keras.utils import to_categorical
 from keras.regularizers import l2
 from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Model
-from keras.layers.wrappers import Bidirectional
-from keras.layers.normalization import BatchNormalization
-from keras.layers.embeddings import Embedding
-from keras.layers import merge, recurrent, Dense, Input, Dropout, TimeDistributed
+# from keras.layers.wrappers import Bidirectional
+# from keras.layers.normalization import BatchNormalization
+from keras.layers import BatchNormalization, Embedding
+# from keras.layers.embeddings import Embedding
+# from keras.layers import merge, recurrent, Dense, Input, Dropout, TimeDistributed
+from keras.layers import Concatenate, Dense, Input, Dropout, TimeDistributed
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 import keras.backend as K
 import keras
@@ -22,7 +25,7 @@ import tarfile
 import tempfile
 import pickle
 
-import numpy as np
+
 np.random.seed(1337)  # for reproducibility
 
 '''
@@ -75,7 +78,7 @@ def get_data(fn, limit=None):
 
     LABELS = {'contradiction': 0, 'neutral': 1, 'entailment': 2}
     Y = np.array([LABELS[l] for l, s1, s2 in raw_data])
-    Y = np_utils.to_categorical(Y, len(LABELS))
+    Y = keras.utils.to_categorical(Y, len(LABELS))
 
     return left, right, Y
 
@@ -154,7 +157,7 @@ def build_model():
     else:
         embed = Embedding(VOCAB, EMBED_HIDDEN_SIZE, input_length=MAX_LEN)
     rnn_kwargs = dict(output_dim=SENT_HIDDEN_SIZE, dropout_W=DP, dropout_U=DP)
-    SumEmbeddings = keras.layers.core.Lambda(
+    SumEmbeddings = keras.layers.Lambda(
         lambda x: K.sum(x, axis=1), output_shape=(SENT_HIDDEN_SIZE, ))
     translate = TimeDistributed(Dense(SENT_HIDDEN_SIZE, activation=ACTIVATION))
 
@@ -175,16 +178,17 @@ def build_model():
     hypo = rnn(hypo)
     prem = BatchNormalization()(prem)
     hypo = BatchNormalization()(hypo)
-    joint = merge.Concatenate()([prem, hypo])
+    # joint = merge.Concatenate()([prem, hypo])
+    joint = Concatenate()([prem, hypo])
     joint = Dropout(DP)(joint)
     for i in range(3):
         joint = Dense(2 * SENT_HIDDEN_SIZE, activation=ACTIVATION,
-                      W_regularizer=l2(L2) if L2 else None)(joint)
+                      kernel_regularizer=l2(L2) if L2 else None)(joint)
         joint = Dropout(DP)(joint)
         joint = BatchNormalization()(joint)
 
     pred = Dense(len(LABELS), activation='softmax')(joint)
-    model = Model(input=[premise, hypothesis], output=pred)
+    model = Model(inputs=[premise, hypothesis], outputs=pred)
     model.compile(optimizer=OPTIMIZER,
                   loss='categorical_crossentropy', metrics=['accuracy'])
 
@@ -204,7 +208,7 @@ if __name__ == '__main__':
     # Save the best model during validation and bail out of training early if we're not improving
     callbacks = [EarlyStopping(patience=PATIENCE), ModelCheckpoint(
         tmpfn, save_best_only=True, save_weights_only=True)]
-    model.fit([training[0], training[1]], training[2], batch_size=BATCH_SIZE, nb_epoch=MAX_EPOCHS,
+    model.fit([training[0], training[1]], training[2], batch_size=BATCH_SIZE, epochs=MAX_EPOCHS,
               validation_data=([validation[0], validation[1]], validation[2]), callbacks=callbacks)
     # Restore the best found model during validation
     model.load_weights(tmpfn)

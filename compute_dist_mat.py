@@ -12,10 +12,12 @@ from keras.preprocessing.sequence import pad_sequences
 MAX_VOCAB_SIZE = 50000
 embedding_matrix = np.load(('aux_files/embeddings_counter_%d.npy' %(MAX_VOCAB_SIZE)))
 missed = np.load(('aux_files/missed_embeddings_counter_%d.npy' %(MAX_VOCAB_SIZE)))
+print("loaded files in")
 c_ = -2*np.dot(embedding_matrix.T , embedding_matrix)
 a = np.sum(np.square(embedding_matrix), axis=0).reshape((1,-1))
 b = a.T
 dist = a+b+c_
+print("computed distances")
 np.save(('aux_files/dist_counter_%d.npy' %(MAX_VOCAB_SIZE)), dist)
 
 # Try an example

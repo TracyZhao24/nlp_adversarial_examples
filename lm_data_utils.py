@@ -37,7 +37,7 @@ class Vocabulary(object):
     self._bos = -1
     self._eos = -1
 
-    with tf.gfile.Open(filename) as f:
+    with tf.compat.v1.gfile.Open(filename) as f:
       idx = 0
       for line in f:
         word_name = line.strip()

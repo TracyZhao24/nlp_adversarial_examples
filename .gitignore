@@ -10,3 +10,4 @@ aclImdb/
 models/
 goog_lm/
 aux_files/
+snli_data/

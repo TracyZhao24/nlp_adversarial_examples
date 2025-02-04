@@ -25,9 +25,11 @@ class LM(object):
 
         self.vocab = lm_data_utils.CharsVocabulary(self.VOCAB_PATH, self.MAX_WORD_LEN)
         print('LM vocab loading done')
-        with tf.device("/gpu:1"):
+        with tf.device("/cpu:1"):
             self.graph = tf.Graph()
-            self.sess = tf.Session(graph=self.graph)
+            # self.sess = tf.compat.v1.Session(graph=self.graph)
+            self.sess = tf.compat.v1.Session(
+                config=tf.compat.v1.ConfigProto(allow_soft_placement=True, log_device_placement=True), graph=self.graph)
         with self.graph.as_default():
             self.t = lm_utils.LoadModel(self.sess, self.graph, self.PBTXT_PATH, self.CKPT_PATH)
 
