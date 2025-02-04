@@ -6,16 +6,21 @@ import os
 import data_utils
 import pickle
 
-from keras.preprocessing.sequence import pad_sequences
+print("import keras")
+from tensorflow.keras.utils import pad_sequences
 
+print("import other things")
 import numpy as np
 import tensorflow as tf
 import pickle
 
 import models
 
+print("done importing")
+
 IMDB_PATH = 'aclImdb'
 MAX_VOCAB_SIZE = 50000
+tf.compat.v1.disable_eager_execution()
 
 if __name__ == '__main__':
     with open(('aux_files/dataset_%d.pkl' %MAX_VOCAB_SIZE), 'rb') as f:

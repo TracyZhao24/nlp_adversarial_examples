@@ -228,8 +228,8 @@ class LM1BDataset(object):
       vocab: Vocabulary.
     """
     self._vocab = vocab
-    self._all_shards = tf.gfile.Glob(filepattern)
-    tf.logging.info('Found %d shards at %s', len(self._all_shards), filepattern)
+    self._all_shards = tf.io.gfile.glob(filepattern)
+    tf.compat.v1.logging.info('Found %d shards at %s', len(self._all_shards), filepattern)
 
   def _load_random_shard(self):
     """Randomly select a file and read it."""
@@ -244,8 +244,8 @@ class LM1BDataset(object):
     Returns:
       list of (id, char_id, global_word_id) tuples.
     """
-    tf.logging.info('Loading data from: %s', shard_name)
-    with tf.gfile.Open(shard_name) as f:
+    tf.compat.v1.logging.info('Loading data from: %s', shard_name)
+    with tf.io.gfile.GFile(shard_name) as f:
       sentences = f.readlines()
     chars_ids = [self.vocab.encode_chars(sentence) for sentence in sentences]
     ids = [self.vocab.encode(sentence) for sentence in sentences]
@@ -258,8 +258,8 @@ class LM1BDataset(object):
       global_word_ids.append(cur_ids)
       current_idx += current_size
 
-    tf.logging.info('Loaded %d words.', current_idx)
-    tf.logging.info('Finished loading')
+    tf.compat.v1.logging.info('Loaded %d words.', current_idx)
+    tf.compat.v1.logging.info('Finished loading')
     return zip(ids, chars_ids, global_word_ids)
 
   def _get_sentence(self, forever=True):
